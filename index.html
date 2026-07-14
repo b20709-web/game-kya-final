@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이상한 놀이공원: 저주받은 복도</title>
+    <style>
+        :root {
+            --primary-color: #8b263e;
+            --secondary-color: #4a1525;
+            --success-color: #2ec4b6;
+            --danger-color: #ff3333;
+            --card-bg: rgba(18, 18, 24, 0.88);
+            --text-color: #f1ebd9;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #030305;
+            color: var(--text-color);
+            font-family: 'Malgun Gothic', -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 게임 메인 컨테이너 - 복도 배경 이미지를 내장 데이터로 직접 바인딩 */
+        #game-container {
+            width: 1000px;
+            height: 560px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="%231a1012"/><stop offset="30%" stop-color="%232b1d20"/><stop offset="50%" stop-color="%231f1a24"/><stop offset="70%" stop-color="%231a2836"/><stop offset="100%" stop-color="%230f1620"/></linearGradient></defs><rect width="100%" height="100%" fill="url(%23g)"/><g fill="%23000" opacity="0.15"><rect x="50" y="40" width="80" height="240"/><rect x="170" y="40" width="80" height="240"/><rect x="750" y="40" width="80" height="240"/><rect x="870" y="40" width="80" height="240"/></g><path d="M380 120 L620 120 L650 480 L350 480 Z" fill="%23150d0e" stroke="%233a2522" stroke-width="4"/><path d="M0 480 L1000 480" stroke="%232d2220" stroke-width="8"/><circle cx="330" cy="380" r="8" fill="%23ff6600" filter="blur(2px)"/><circle cx="670" cy="380" r="8" fill="%23ff6600" filter="blur(2px)"/></svg>');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            border: 4px solid #2a1a15;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        /* 붉은 오염도 필터 레이어 */
+        #bg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0);
+            transition: background-color 0.5s ease;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* 👻 귀신 이미지 레이어 - 이미지를 코드 내부에 완벽 삽입 */
+        #ghost-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 320px;
+            height: 480px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480"><path d="M160 40 C110 40 90 90 90 150 C90 220 50 320 70 440 C80 400 100 380 120 420 C140 370 150 400 160 430 C170 400 180 370 200 420 C220 380 240 400 250 440 C270 320 230 220 230 150 C230 90 210 40 160 40 Z" fill="%23111116" opacity="0.95"/><path d="M160 50 C120 50 100 95 100 150 C100 210 110 270 100 350 C130 310 140 340 160 320 C180 340 190 310 220 350 C210 270 220 210 220 150 C220 95 200 50 160 50 Z" fill="%23050508"/><ellipse cx="140" cy="110" rx="6" ry="10" fill="%23000" opacity="0.7"/><ellipse cx="180" cy="110" rx="6" ry="10" fill="%23000" opacity="0.7"/><path d="M65 240 C55 260 40 300 35 330 C45 310 60 290 70 280 Z" fill="%23191922"/><path d="M255 240 C265 260 280 300 285 330 C275 310 260 290 250 280 Z" fill="%23191922"/></svg>');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            transform: translate(-50%, -45%) scale(0.1);
+            opacity: 0;
+            transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.8s ease;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* 자막 컨테이너 */
+        #subtitle-container {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.75);
+            padding: 12px 30px;
+            border-radius: 6px;
+            border: 1px solid rgba(230, 184, 106, 0.3);
+            font-size: 16px;
+            color: #e6b86a;
+            text-align: center;
+            min-width: 400px;
+            z-index: 4;
+            transition: opacity 0.4s ease;
+        }
+
+        /* 인터페이스 메인 카드 */
+        .card {
+            position: relative;
+            z-index: 3;
+            width: 600px;
+            background-color: var(--card-bg);
+            border: 1px solid rgba(139, 38, 62, 0.35);
+            border-radius: 12px;
+            padding: 40px;
+            box-sizing: border-box;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: all 0.5s ease;
+        }
+
+        .title {
+            font-size: 25px;
+            font-weight: bold;
+            color: #e6b86a;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        .message-box {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #d1c7bd;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+            margin-bottom: 25px;
+            text-align: left;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: 1px solid #a63a50;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(139, 38, 62, 0.4);
+        }
+
+        .btn:hover {
+            background-color: #a63a50;
+            transform: translateY(-1px);
+        }
+
+        /* 퀴즈 헤더 영역 */
+        #quiz-header {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            padding-bottom: 12px;
+            gap: 6px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            font-weight: bold;
+            color: #a0968c;
+        }
+
+        .timer-text {
+            font-size: 17px;
+            font-weight: bold;
+            color: #e6b86a;
+            transition: color 0.3s ease;
+        }
+
+        .danger-status {
+            font-size: 13px;
+            font-weight: bold;
+            color: #a0968c;
+            text-align: right;
+            transition: color 0.3s ease;
+        }
+
+        .time-warning {
+            color: var(--danger-color) !important;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0.3; } }
+
+        #question-text {
+            font-size: 17px;
+            font-weight: bold;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            text-align: left;
+            width: 100%;
+            color: #f1ebd9;
+        }
+
+        #options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .option-btn {
+            background-color: rgba(25, 25, 30, 0.8);
+            color: #d1c7bd;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 12px 18px;
+            font-size: 14px;
+            text-align: left;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            border-color: var(--primary-color);
+            background-color: rgba(139, 38, 62, 0.25);
+            color: #ffffff;
+        }
+
+        #feedback-text {
+            font-size: 15px;
+            font-weight: bold;
+            min-height: 22px;
+            margin-top: 5px;
+            text-align: center;
+        }
+
+        .correct { color: var(--success-color); }
+        .wrong { color: var(--danger-color); }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- 비주얼 이펙트 레이어 -->
+    <div id="bg-overlay"></div>
+    <div id="ghost-overlay"></div>
+
+    <!-- 실시간 시스템 네러티브 자막 바 -->
+    <div id="subtitle-container">시스템 연결 중...</div>
+
+    <!-- 1. 진입 시작 화면 -->
+    <div id="intro-screen" class="card">
+        <div class="title">이상한 놀이공원: 저주받은 복도</div>
+        <div class="message-box">
+            이곳은 오직 왼쪽에서 오른쪽으로만 전진할 수 있는 단순한 구조의 일직선 복도입니다.<br>
+            방을 지날 때마다 깊어지는 10개의 확률과 통계 수학 문제를 풀고 안전하게 탈출하세요.<br><br>
+            <strong>※ 규칙:</strong> 제한 시간은 문항당 1분이며, 총 3번 틀리면 복도의 처음 위치로 추방됩니다. 오답이 누적될수록 기척이 다가옵니다.
+        </div>
+        <button id="start-btn" class="btn">복도로 들어가기</button>
+    </div>
+
+    <!-- 2. 플레이어 연산 공간 -->
+    <div id="game-screen" class="card hidden">
+        <div id="quiz-header">
+            <div class="header-top">
+                <div id="progress" class="progress-text">복도 진행도: 1 / 10</div>
+                <div id="timer" class="timer-text">남은 시간: 60초</div>
+            </div>
+            <div id="danger-indicator" class="danger-status">귀신과의 거리: 안전함</div>
+        </div>
+        <div id="question-text">문제가 표시됩니다.</div>
+        <div id="options-container"></div>
+        <div id="feedback-text"></div>
+    </div>
+
+    <!-- 3. 엔딩 공간 -->
+    <div id="outro-screen" class="card hidden">
+        <div class="title" style="color: var(--success-color);">탈출 성공</div>
+        <div class="message-box" style="text-align: center;">
+            모든 확률적 제약과 공간적 압박을 풀고 무사히 출구에 당도했습니다.<br><br>
+            <strong style="color:#e6b86a; font-size:17px;">"당신은 현실로 되돌아갑니다."</strong>
+        </div>
+        <button id="reset-btn" class="btn">처음으로 가기</button>
+    </div>
+</div>
+
+<script>
+    // 점진적으로 심화되는 확통 10대 문항 정렬 데이터 세트
+    const quizData = [
+        {
+            question: "Q1. 다음 중 (4-x)³ 을 바르게 전개한 식을 고르시오.",
+            options: ["64 - 12x + 3x² - x³", "64 - 48x + 12x² - x³", "64 + 48x + 12x² + x³", "16 - 8x + x²"],
+            answer: 1
+        },
+        {
+            question: "Q2. 모평균과 모분산의 수학적 기호가 알맞게 짝지어진 것을 고르시오.",
+            options: ["m , σ²", "X̄ , s²", "E(X) , V(X)", "μ , s"],
+            answer: 0
+        },
+        {
+            question: "Q3. 주사위 두 개를 동시에 던질 때, 나오는 눈의 수의 합이 5 이상일 확률을 구하시오.",
+            options: ["5/36", "1/6", "5/6", "31/36"],
+            answer: 2
+        },
+        {
+            question: "Q4. 남학생 4명과 여학생 3명을 일렬로 세울 때, 여학생끼리 전부 이웃하게 세우는 경우의 수는?",
+            options: ["144가지", "720가지", "240가지", "120가지"],
+            answer: 1
+        },
+        {
+            question: "Q5. 'STATISTICS'라는 10개의 문자를 일렬로 나열할 때, 만들 수 있는 모든 경우의 수는?",
+            options: ["50,400가지", "75,600가지", "3,628,800가지", "151,200가지"],
+            answer: 0
+        },
+        {
+            question: "Q6. 두 사건 A와 B가 서로 독립이고 P(A) = 1/3, P(B) = 1/2 일 때, P(A ∪ B)의 값은?",
+            options: ["5/6", "1/6", "2/3", "4/5"],
+            answer: 2
+        },
+        {
+            question: "Q7. 한 개의 주사위를 6번 던질 때, 짝수의 눈이 정확히 4번 나올 확률을 구하시오.",
+            options: ["15/64", "5/16", "15/32", "3/16"],
+            answer: 0
+        },
+        {
+            question: "Q8. 확률변수 X가 이항분포 B(100, 1/5)을 따를 때, X의 표준편차(σ)의 값은?",
+            options: ["20", "16", "5", "4"],
+            answer: 3
+        },
+        {
+            question: "Q9. 어느 공장에서 생산되는 제품의 무게는 평균이 50g, 표준편차가 4g인 정규분포를 따른다. 임의추출한 4개 제품의 표본평균(X̄)의 표준편차는?",
+            options: ["1g", "2g", "4g", "0.5g"],
+            answer: 1
+        },
+        {
+            question: "Q10. 표준정규분포 N(0, 1)을 따르는 확률변수 Z에 대하여, P(0 ≤ Z ≤ 1.96) = 0.4750이다. 모평균을 신뢰도 95%로 추정할 때 사용하는 신뢰구간의 상수로 알맞은 것은?",
+            options: ["1.65", "1.96", "2.58", "0.475"],
+            answer: 1
+        }
+    ];
+
+    let currentLevel = 0;
+    let wrongCount = 0;
+    const maxWrong = 3;
+    
+    let timeLeft = 60;
+    let timerInterval = null;
+
+    const introScreen = document.getElementById('intro-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const outroScreen = document.getElementById('outro-screen');
+    const questionText = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const feedbackText = document.getElementById('feedback-text');
+    const progressText = document.getElementById('progress');
+    const timerText = document.getElementById('timer');
+    const dangerIndicator = document.getElementById('danger-indicator');
+    const bgOverlay = document.getElementById('bg-overlay');
+    const ghostOverlay = document.getElementById('ghost-overlay');
+    const gameScreenCard = document.getElementById('game-screen');
+    const subtitle = document.getElementById('subtitle-container');
+    
+    const startBtn = document.getElementById('start-btn');
+    const resetBtn = document.getElementById('reset-btn');
+
+    startBtn.addEventListener('click', startGame);
+    resetBtn.addEventListener('click', resetGame);
+
+    // 시작 시 안내 자막 송출 애니메이션 연출
+    window.onload = () => {
+        setSubtitle("당신은 이상한 놀이공원에 초대되었습니다.");
+    };
+
+    function setSubtitle(msg) {
+        subtitle.style.opacity = "1";
+        subtitle.innerText = msg;
+    }
+
+    function startGame() {
+        introScreen.classList.add('hidden');
+        gameScreen.classList.remove('hidden');
+        setSubtitle("오직 오른쪽으로 전진하는 복도 형태의 기괴한 공간입니다.");
+        loadQuiz();
+    }
+
+    function startTimer() {
+        clearInterval(timerInterval);
+        timeLeft = 60;
+        timerText.innerText = `남은 시간: ${timeLeft}초`;
+        timerText.classList.remove('time-warning');
+
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerText.innerText = `남은 시간: ${timeLeft}초`;
+
+            if (timeLeft === 5) {
+                timerText.classList.add('time-warning');
+                feedbackText.className = 'wrong';
+                feedbackText.innerText = '⚠️ 경고: 시간이 다 되어 공간 왜곡이 한계에 다다릅니다!';
+            }
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                handleTimeOut();
+            }
+        }, 1000);
+    }
+
+    function handleTimeOut() {
+        wrongCount++;
+        feedbackText.className = 'wrong';
+        feedbackText.innerText = '⏱️ 시간 초과! 기척이 더 가까워집니다.';
+        setSubtitle("제한 시간 이내에 문제를 풀지 못했습니다.");
+        
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(btn => btn.disabled = true);
+
+        applyGhostEffects();
+
+        setTimeout(() => {
+            if (wrongCount >= maxWrong) {
+                showEndScreen(false);
+            } else {
+                loadQuiz();
+            }
+        }, 2000);
+    }
+
+    function loadQuiz() {
+        clearInterval(timerInterval);
+        feedbackText.innerText = '';
+        progressText.innerText = `복도 진행도: ${currentLevel + 1} / ${quizData.length}`;
+        
+        const currentStage = quizData[currentLevel];
+        questionText.innerText = currentStage.question;
+
+        optionsContainer.innerHTML = '';
+        currentStage.options.forEach((opt, idx) => {
+            const button = document.createElement('button');
+            button.className = 'option-btn';
+            button.innerText = opt;
+            button.onclick = () => checkAnswer(idx);
+            optionsContainer.appendChild(button);
+        });
+
+        startTimer();
+    }
+
+    function checkAnswer(selectedIdx) {
+        clearInterval(timerInterval);
+        const currentStage = quizData[currentLevel];
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(btn => btn.disabled = true);
+
+        if (selectedIdx === currentStage.answer) {
+            feedbackText.className = 'correct';
+            feedbackText.innerText = '⭕ 정답입니다! 다음 방 구역으로 안전하게 전진합니다.';
+            setSubtitle(`훌륭합니다. 복도 관문 ${currentLevel + 1} 단계를 통과했습니다.`);
+            currentLevel++;
+
+            setTimeout(() => {
+                if (currentLevel < quizData.length) {
+                    loadQuiz();
+                } else {
+                    showEndScreen(true);
+                }
+            }, 1200);
+        } else {
+            wrongCount++;
+            feedbackText.className = 'wrong';
+            feedbackText.innerText = '❌ 오답입니다. 공간 연산 실패로 거리가 좁혀집니다.';
+            setSubtitle("수학적 계산 오류가 발생해 사방이 붉게 오염됩니다.");
+            
+            applyGhostEffects();
+
+            setTimeout(() => {
+                if (wrongCount >= maxWrong) {
+                    showEndScreen(false);
+                } else {
+                    buttons.forEach(btn => btn.disabled = false);
+                    feedbackText.innerText = '';
+                    startTimer();
+                }
+            }, 1500);
+        }
+    }
+
+    /* 👻 코드 내장형 SVG 그래픽이 오답 횟수에 맞춰 점진적으로 확대 스케일링 */
+    function applyGhostEffects() {
+        if (wrongCount === 1) {
+            bgOverlay.style.backgroundColor = "rgba(139, 38, 62, 0.25)";
+            gameScreenCard.style.borderColor = "#ff5555";
+            dangerIndicator.innerText = "귀신과의 거리: 접근 중 (⚠️ 경고)";
+            dangerIndicator.style.color = "#ff5555";
+            
+            ghostOverlay.style.transform = "translate(-50%, -45%) scale(0.6)";
+            ghostOverlay.style.opacity = "0.45";
+
+        } else if (wrongCount === 2) {
+            bgOverlay.style.backgroundColor = "rgba(139, 38, 62, 0.5)";
+            gameScreenCard.style.borderColor = "var(--danger-color)";
+            dangerIndicator.innerText = "귀신과의 거리: 지근거리 (🚨 위험)";
+            dangerIndicator.style.color = "var(--danger-color)";
+            
+            ghostOverlay.style.transform = "translate(-50%, -50%) scale(1.3)";
+            ghostOverlay.style.opacity = "0.85";
+        }
+    }
+
+    function showEndScreen(isSuccess) {
+        clearInterval(timerInterval);
+        gameScreen.classList.add('hidden');
+        if (isSuccess) {
+            clearEffects();
+            setSubtitle("당신은 완전히 탈출하여 안전한 현실로 되돌아갑니다.");
+            outroScreen.classList.remove('hidden');
+        } else {
+            ghostOverlay.style.transform = "translate(-50%, -50%) scale(3.5)";
+            ghostOverlay.style.opacity = "1";
+            setSubtitle("오답 한계치 도달. 강제 공간 재부팅 시스템이 발동됩니다.");
+            
+            setTimeout(() => {
+                alert("3회 오답으로 인해 공간 왜곡도가 100%를 초과하여 복도의 처음 지점으로 추방되었습니다.");
+                resetGame();
+            }, 800);
+        }
+    }
+
+    function clearEffects() {
+        bgOverlay.style.backgroundColor = "rgba(0, 0, 0, 0)";
+        gameScreenCard.style.borderColor = "rgba(139, 38, 62, 0.35)";
+        dangerIndicator.innerText = "귀신과의 거리: 안전함";
+        dangerIndicator.style.color = "#a0968c";
+        timerText.classList.remove('time-warning');
+        
+        ghostOverlay.style.transform = "translate(-50%, -40%) scale(0.1)";
+        ghostOverlay.style.opacity = "0";
+    }
+
+    function resetGame() {
+        clearInterval(timerInterval);
+        currentLevel = 0;
+        wrongCount = 0;
+        clearEffects();
+        setSubtitle("당신은 이상한 놀이공원에 초대되었습니다.");
+        outroScreen.classList.add('hidden');
+        gameScreen.classList.add('hidden');
+        introScreen.classList.remove('hidden');
+    }
+</script>
+</body>
+</html>
